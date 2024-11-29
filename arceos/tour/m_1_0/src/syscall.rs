@@ -5,6 +5,7 @@ use axhal::arch::TrapFrame;
 use axhal::mem::VirtAddr;
 use axhal::paging::MappingFlags;
 use axhal::trap::{register_trap_handler, PAGE_FAULT, SYSCALL};
+use axtask::{current, TaskExtRef};
 
 const SYS_EXIT: usize = 93;
 
@@ -25,8 +26,18 @@ fn handle_syscall(tf: &TrapFrame, syscall_num: usize) -> isize {
 }
 
 #[register_trap_handler(PAGE_FAULT)]
-fn handle_page_fault(_va: VirtAddr, _access_flags: MappingFlags, _is_user: bool) -> bool {
+fn handle_page_fault(va: VirtAddr, access_flags: MappingFlags, _is_user: bool) -> bool {
     ax_println!("handle_page_fault ...");
+    if current()
+        .task_ext()
+        .aspace
+        .lock()
+        .handle_page_fault(va, access_flags)
+    {
+        ax_println!("OK!")
+    } else {
+        ax_println!("{}: segmentation fault, exit!", axtask::current().id_name());
+    }
 
-    return false;
+    return true;
 }
